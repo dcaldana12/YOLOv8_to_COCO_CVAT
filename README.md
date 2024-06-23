@@ -1,0 +1,2 @@
+# YOLOv8_to_COCO_CVAT
+ 
