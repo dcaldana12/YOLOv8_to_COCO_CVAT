@@ -38,7 +38,7 @@ Inside the `constants.yaml` there is a set of parameters whose description is as
 * Clone repo and install the requirements
 
 ```
-git clone https://github.com/dcaldana12/YOLOV8_to_COCO_CVAT.git
+git clone https://github.com/dcaldana12/YOLOv8_to_COCO_CVAT.git
 cd YOLOV8_to_COCO_CVAT
 pip install -r requirements.txt
 ```
