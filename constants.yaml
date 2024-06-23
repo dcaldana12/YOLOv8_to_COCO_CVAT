@@ -1,0 +1,11 @@
+model_path: '/path/to/model.pt' # Path to the model file
+
+images_path: '/path/to/images/folder' # Path to the images folder
+
+labels: [label1, label2] # Labels used by the model. You should order by the index of the label in the model output
+
+save_annotations_path: # Path to save the annotations file. If empty the annotations will be saved in the current folder
+
+yolo_results:
+  save_image: False # If True, the predictions will be saved in the path specified in save_annotations_path in folder predictions/images
+  save_annotation: False # If True, the annotations in YOLO OBB format will be saved in the path specified in save_annotations_path in folder predictions/annotations
