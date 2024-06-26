@@ -71,7 +71,7 @@ def main():
     if save_annotations_file_path is not None and not os.path.exists(save_annotations_file_path):
         print(f"Save annotations path not found: {save_annotations_file_path}")
         raise FileNotFoundError(f"Save annotations path not found: {save_annotations_file_path} was not found")
-    else:
+    elif save_annotations_file_path is None:
         save_annotations_file_path = os.path.curdir
         save_image_path = os.path.join(save_annotations_file_path, "predictions", "images")
         save_txt_file_path = os.path.join(save_annotations_file_path, "predictions", "annotations")
@@ -103,11 +103,6 @@ def main():
     images_paths = sorted(images_paths)
     logger.debug(f"Found {len(images_paths)} images")
 
-    # ---------- Predict ----------
-    logger.debug(f"Predicting on images")
-    results = model.predict(images_paths, stream=True)
-
-    # ---------- Save results ----------
     data = {}
     # Add COCO header
     data.update({"licenses": [{"name": "", "id": 0, "url": ""}], "info": {"contributor": "", "date_created": "", "description": "", "url": "", "version": "", "year": ""}})
@@ -116,28 +111,42 @@ def main():
     
     data_images = {"images": []}
     data_annotations = {"annotations": []}
-    for i, result in enumerate(results, start=1):
 
-        # Save image
-        if save_image:
-            path_to_save = os.path.join(save_image_path, os.path.basename(result.path))
-            result.save(filename=path_to_save)
-        # Save txt
-        if save_txt:
-            path_to_save = os.path.join(save_txt_file_path, os.path.splitext(os.path.basename(result.path))[0] + ".txt")
-            result.save_txt(txt_file=path_to_save)
+    # ---------- Predict ----------
+    logger.debug(f"Predicting on images")
+    results = model.predict(images_paths, stream=True)
 
-        new_image = {"id": i, "width": result.orig_shape[1], "height": result.orig_shape[0], "file_name": os.path.basename(result.path), "license": 0, "flickr_url": "", "coco_url": "", "date_captured": 0}
-        # Add new image
-        data_images["images"].append(new_image)
+    batch_size = 10 # Adjust the batch size as necessary
+    for batch_start in range(0, len(images_paths), batch_size):
+        batch_end = min(batch_start + batch_size, len(images_paths))
+        batch_paths = images_paths[batch_start:batch_end]
+        results = model.predict(batch_paths, stream=True)
 
-        # Calculate bounding box for each annotation in result
-        id = 1 # bbox id
-        for r_xywhr in result.obb.xywhr:
-            new_annotation = calculate_bbox(id, i, result.obb.cls, r_xywhr)
-            # Add new annotation
-            data_annotations["annotations"].append(new_annotation)
-            id += 1
+        # ---------- Save results ----------
+        for i, result in enumerate(results, start=batch_start+1):
+
+            # Save image
+            if save_image:
+                path_to_save = os.path.join(save_image_path, os.path.basename(result.path))
+                result.save(filename=path_to_save)
+            # Save txt
+            if save_txt:
+                path_to_save = os.path.join(save_txt_file_path, os.path.splitext(os.path.basename(result.path))[0] + ".txt")
+                result.save_txt(txt_file=path_to_save)
+
+            new_image = {"id": i, "width": result.orig_shape[1], "height": result.orig_shape[0], "file_name": os.path.basename(result.path), "license": 0, "flickr_url": "", "coco_url": "", "date_captured": 0}
+            # Add new image
+            data_images["images"].append(new_image)
+
+            # Calculate bounding box for each annotation in result
+            id = 1 # bbox id
+            for r_xywhr in result.obb.xywhr:
+                new_annotation = calculate_bbox(id, i, result.obb.cls, r_xywhr)
+                # Add new annotation
+                data_annotations["annotations"].append(new_annotation)
+                id += 1
+            
+        logger.debug(f"Processed {batch_end} images")
     
     logger.debug(f"Saving results")
     # Add images and annotations to data
@@ -147,6 +156,7 @@ def main():
     # Generate json file and save data
     with open(json_file_path, 'w') as file:
         json.dump(data, file)
+    logger.debug(f"Saved results to {json_file_path}")
 
     logger.debug("Done")
 
